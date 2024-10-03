@@ -54,22 +54,24 @@ RUN apt-get -y -qq -o Dpkg::Use-Pty=0 install --no-install-recommends bash # for
 RUN mkdir -p {ARG_STAGING}
 COPY stage_binaries.sh /
 RUN /stage_binaries.sh -o {ARG_STAGING} \
-	-p base-files \
-	-p bash \
-	-p coreutils \
-	-p git \
-	-p openssh-client \
-	-p ca-certificates \
-	-p curl \
-	-p socat \
-	-b /bin/grep \
-	-b /bin/sed \
-	-f /etc/debian_version \
-	-f /etc/group \
-	-f /etc/nsswitch.conf \
-	-f /etc/os-release \
-	-f /etc/passwd \
-	-f /tmp
+    -p base-files \
+    -p bash \
+    -p coreutils \
+    -p git \
+    -p openssh-client \
+    -p ca-certificates \
+    -p curl \
+    -p socat \
+    -p rclone \
+    -p vim \
+    -b /bin/grep \
+    -b /bin/sed \
+    -f /etc/debian_version \
+    -f /etc/group \
+    -f /etc/nsswitch.conf \
+    -f /etc/os-release \
+    -f /etc/passwd \
+    -f /tmp
 RUN ln -s /bin/bash {ARG_STAGING}/bin/sh # Not sure why this is not set up automatically
 
 FROM scratch as intermediate
@@ -126,6 +128,9 @@ ARG HASH_LICENSES=0
 # Add third-party licenses.
 COPY .licenses/ /LICENSES/
 
+COPY ./scripts/clone.sh /usr/bin/clone.sh
+RUN chmod +x /usr/bin/clone.sh
+
 # When building, we can pass a hash of the binary, which docker checks against
 # its cache and can force a rebuild from here.
 ARG HASH_BINARY=0
@@ -138,6 +143,8 @@ COPY bin/{ARG_OS}_{ARG_ARCH}/{ARG_BIN} /{ARG_BIN}
 #############################################################################
 FROM scratch
 COPY --from=intermediate / /
+
+RUN mkdir -p /opt/airflow/dags && chmod -R 777 /opt/airflow/dags
 
 # Run as non-root by default.  There's simply no reason to run as root.
 USER 65533:65533
